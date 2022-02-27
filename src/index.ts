@@ -1,12 +1,12 @@
 import WebSocket = require('ws');
-import { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 import * as apicrypto from './apicrypto';
 import {
   ReceivedEncryptedFrameContent,
   ReceivedFrames,
   RemootioAction,
   SentEcryptedFrameContent,
-  SentFrames
+  SentFrames,
 } from './frames';
 
 /**
@@ -90,13 +90,25 @@ interface RemootioDeviceEvents {
   authenticated: () => void;
   disconnect: () => void;
   error: (errorMessage: string) => void;
-  outgoingmessage: (frame?: SentFrames, unencryptedPayload?: SentEcryptedFrameContent) => void;
-  incomingmessage: (frame: ReceivedFrames, decryptedPayload?: ReceivedEncryptedFrameContent) => void;
+  outgoingmessage: (
+    frame?: SentFrames,
+    unencryptedPayload?: SentEcryptedFrameContent
+  ) => void;
+  incomingmessage: (
+    frame: ReceivedFrames,
+    decryptedPayload?: ReceivedEncryptedFrameContent
+  ) => void;
 }
 
 declare interface RemootioDevice {
-  on<E extends keyof RemootioDeviceEvents>(event: E, listener: RemootioDeviceEvents[E]): this;
-  emit<E extends keyof RemootioDeviceEvents>(event: E, ...args: Parameters<RemootioDeviceEvents[E]>): boolean;
+  on<E extends keyof RemootioDeviceEvents>(
+    event: E,
+    listener: RemootioDeviceEvents[E]
+  ): this;
+  emit<E extends keyof RemootioDeviceEvents>(
+    event: E,
+    ...args: Parameters<RemootioDeviceEvents[E]>
+  ): boolean;
 }
 
 class RemootioDevice extends EventEmitter {
@@ -120,38 +132,47 @@ class RemootioDevice extends EventEmitter {
    * @param {string} ApiAuthKey - API Auth Key of the device (as seen in the Remootio app). It is a hexstring representing a 256 bit long value e.g. "74ca13b56b3c898670a67e8f36f8b8a61340738c82617ba1398ae7ca62f1670a"
    * @param {number} [sendPingMessageEveryXMs=60000] - the API client sends a ping frame to the Remootio device every sendPingMessageEveryXMs milliseconds to keep the connection alive. Remootio closes the connection if no message is received for 120 seconds. If no message is received from Remootio within (sendPingMessageEveryXMs/2) milliseconds after PING frame is sent the API client considers the connection to be broken and closes it. It's not recommended to set sendPingMessageEveryXMs below 10000 (10 seconds).
    */
-  constructor(DeviceIp: string, ApiSecretKey: string, ApiAuthKey: string, sendPingMessageEveryXMs?: number) {
+  constructor(
+      DeviceIp: string,
+      ApiSecretKey: string,
+      ApiAuthKey: string,
+      sendPingMessageEveryXMs?: number,
+  ) {
     super();
-    //Input check
+    // Input check
     let hexstringRe = /[0-9A-Fa-f]{64}/g;
     if (!hexstringRe.test(ApiSecretKey)) {
-      console.error('ApiSecretKey must be a hexstring representing a 256bit long byteArray');
+      console.error(
+          'ApiSecretKey must be a hexstring representing a 256bit long byteArray',
+      );
     }
     hexstringRe = /[0-9A-Fa-f]{64}/g;
     if (!hexstringRe.test(ApiAuthKey)) {
-      console.error('ApiAuthKey must be a hexstring representing a 256bit long byteArray');
+      console.error(
+          'ApiAuthKey must be a hexstring representing a 256bit long byteArray',
+      );
     }
-    //Set config
+    // Set config
     this.apiSecretKey = ApiSecretKey;
     this.apiAuthKey = ApiAuthKey;
     this.deviceIp = DeviceIp;
     this.websocketClient = undefined;
-    //Session related data - will be filled out by the code
-    this.apiSessionKey = undefined; //base64 encoded
+    // Session related data - will be filled out by the code
+    this.apiSessionKey = undefined; // base64 encoded
     this.lastActionId = undefined;
 
-    this.autoReconnect = false; //Reconnect automatically if connection is lost
+    this.autoReconnect = false; // Reconnect automatically if connection is lost
 
     if (sendPingMessageEveryXMs) {
-      this.sendPingMessageEveryXMs = sendPingMessageEveryXMs; //in ms , send a ping message every PingMessagePeriodicity time, a PONG reply is expected
+      this.sendPingMessageEveryXMs = sendPingMessageEveryXMs; // in ms , send a ping message every PingMessagePeriodicity time, a PONG reply is expected
     } else {
       this.sendPingMessageEveryXMs = 60000;
     }
 
-    this.sendPingMessageIntervalHandle = undefined; //we fire up a setInterval upon connection to the device to send ping messages every x seconds
-    this.pingReplyTimeoutXMs = this.sendPingMessageEveryXMs / 2; //in ms, if a PONG frame (or any other frame) doesn't arrive pingReplyTimeoutXMs milliseconds after we send a PING frame, we assume the connection is broken
-    this.pingReplyTimeoutHandle = undefined; //We check for pong response for all our ping messages, if they don't arrive we assume the connection is broken and close it
-    this.waitingForAuthenticationQueryActionResponse = false; //needed to emit the 'authenticated' even on the successful response to the QUERY action sent in the authentication flow
+    this.sendPingMessageIntervalHandle = undefined; // we fire up a setInterval upon connection to the device to send ping messages every x seconds
+    this.pingReplyTimeoutXMs = this.sendPingMessageEveryXMs / 2; // in ms, if a PONG frame (or any other frame) doesn't arrive pingReplyTimeoutXMs milliseconds after we send a PING frame, we assume the connection is broken
+    this.pingReplyTimeoutHandle = undefined; // We check for pong response for all our ping messages, if they don't arrive we assume the connection is broken and close it
+    this.waitingForAuthenticationQueryActionResponse = false; // needed to emit the 'authenticated' even on the successful response to the QUERY action sent in the authentication flow
   }
 
   /**
@@ -163,27 +184,29 @@ class RemootioDevice extends EventEmitter {
       this.autoReconnect = true;
     }
 
-    //Set session data to NULL
+    // Set session data to NULL
     this.apiSessionKey = undefined;
     this.lastActionId = undefined;
     this.waitingForAuthenticationQueryActionResponse = undefined;
 
-    //We connect to the API
+    // We connect to the API
     this.websocketClient = new WebSocket('ws://' + this.deviceIp + ':8080/');
     this.emit('connecting');
 
     this.websocketClient.on('open', () => {
       this.emit('connected');
 
-      //We send a ping message every 60 seconds to keep the connection alive
-      //If the Remootio API gets no message for 120 seconds, it closes the connection
+      // We send a ping message every 60 seconds to keep the connection alive
+      // If the Remootio API gets no message for 120 seconds, it closes the connection
       this.sendPingMessageIntervalHandle = setInterval(() => {
         if (this.websocketClient?.readyState == WebSocket.OPEN) {
-          //Create a timeout that is cleared once a PONG message is received - if it doesn't arrive, we assume the connection is broken
+          // Create a timeout that is cleared once a PONG message is received - if it doesn't arrive, we assume the connection is broken
           this.pingReplyTimeoutHandle = setTimeout(() => {
             this.emit(
-              'error',
-              'No response for PING message in ' + this.pingReplyTimeoutXMs + ' ms. Connection is broken.'
+                'error',
+                'No response for PING message in ' +
+                this.pingReplyTimeoutXMs +
+                ' ms. Connection is broken.',
             );
             if (this.websocketClient) {
               this.websocketClient.terminate();
@@ -197,53 +220,57 @@ class RemootioDevice extends EventEmitter {
 
     this.websocketClient.on('message', (data) => {
       try {
-        //We process the messsage received from the API
-        const rcvMsgJson: ReceivedFrames = JSON.parse(data.toString()); //It must be JSON format
+        // We process the messsage received from the API
+        const rcvMsgJson: ReceivedFrames = JSON.parse(data.toString()); // It must be JSON format
 
-        //If we get any reply after our PING message (not only PONG) we clear the pingReplyTimeout
+        // If we get any reply after our PING message (not only PONG) we clear the pingReplyTimeout
         if (this.pingReplyTimeoutHandle != undefined) {
           clearTimeout(this.pingReplyTimeoutHandle);
           this.pingReplyTimeoutHandle = undefined;
         }
 
-        //we process the incoming frames
+        // we process the incoming frames
         if (rcvMsgJson && rcvMsgJson.type == 'ENCRYPTED') {
-          //if it's an encrypted frame we decrypt it and then this.emit the event
+          // if it's an encrypted frame we decrypt it and then this.emit the event
           const decryptedPayload = apicrypto.remootioApiDecryptEncrypedFrame(
-            rcvMsgJson,
-            this.apiSecretKey,
-            this.apiAuthKey,
-            this.apiSessionKey
+              rcvMsgJson,
+              this.apiSecretKey,
+              this.apiAuthKey,
+              this.apiSessionKey,
           );
-          //we this.emit the encrypted frames with decrypted payload
+          // we this.emit the encrypted frames with decrypted payload
           this.emit('incomingmessage', rcvMsgJson, decryptedPayload);
 
           if (decryptedPayload != undefined) {
             if ('challenge' in decryptedPayload) {
-              //If it's an auth challenge
-              //It's a challenge message
-              this.apiSessionKey = decryptedPayload.challenge.sessionKey; //we update the session key
-              this.lastActionId = decryptedPayload.challenge.initialActionId; //and the actionId (frame counter for actions)
+              // If it's an auth challenge
+              // It's a challenge message
+              this.apiSessionKey = decryptedPayload.challenge.sessionKey; // we update the session key
+              this.lastActionId = decryptedPayload.challenge.initialActionId; // and the actionId (frame counter for actions)
 
               this.waitingForAuthenticationQueryActionResponse = true;
               this.sendQuery();
             }
 
-            if ('response' in decryptedPayload && decryptedPayload.response.id != undefined) {
-              //If we get a response to one of our actions, we incremenet the last action id
+            if (
+              'response' in decryptedPayload &&
+              decryptedPayload.response.id != undefined
+            ) {
+              // If we get a response to one of our actions, we incremenet the last action id
               if (this.lastActionId != undefined) {
                 if (
-                  this.lastActionId < decryptedPayload.response.id || //But we only increment if the response.id is greater than the current counter value
-                  (decryptedPayload.response.id == 0 && this.lastActionId == 0x7fffffff)
+                  this.lastActionId < decryptedPayload.response.id || // But we only increment if the response.id is greater than the current counter value
+                  (decryptedPayload.response.id == 0 &&
+                    this.lastActionId == 0x7fffffff)
                 ) {
-                  //or when we overflow from 0x7FFFFFFF to 0
-                  this.lastActionId = decryptedPayload.response.id; //We update the lastActionId
+                  // or when we overflow from 0x7FFFFFFF to 0
+                  this.lastActionId = decryptedPayload.response.id; // We update the lastActionId
                 }
               } else {
                 console.warn('Unexpected error - lastActionId is undefined');
               }
 
-              //if it's the response to our QUERY action sent during the authentication flow the 'authenticated' event should be emitted
+              // if it's the response to our QUERY action sent during the authentication flow the 'authenticated' event should be emitted
               if (
                 decryptedPayload.response.type == 'QUERY' &&
                 this.waitingForAuthenticationQueryActionResponse == true
@@ -256,16 +283,18 @@ class RemootioDevice extends EventEmitter {
             this.emit('error', 'Authentication or encryption error');
           }
         } else {
-          //we this.emit the normal frames
+          // we this.emit the normal frames
           this.emit('incomingmessage', rcvMsgJson, undefined);
         }
       } catch (e) {
-        this.emit('error', e);
+        if (e instanceof Error) {
+          this.emit('error', e.message);
+        }
       }
     });
 
     this.websocketClient.on('close', () => {
-      //Clear the ping message interval if the connection is lost
+      // Clear the ping message interval if the connection is lost
       if (this.sendPingMessageIntervalHandle != undefined) {
         clearInterval(this.sendPingMessageIntervalHandle);
         this.sendPingMessageIntervalHandle = undefined;
@@ -279,7 +308,7 @@ class RemootioDevice extends EventEmitter {
     });
 
     this.websocketClient.on('error', () => {
-      //Connection error
+      // Connection error
     });
   }
 
@@ -289,7 +318,7 @@ class RemootioDevice extends EventEmitter {
    */
   disconnect(): void {
     if (this.websocketClient != undefined) {
-      this.autoReconnect = false; //We disable autoreconnect if we disconnect due to user will
+      this.autoReconnect = false; // We disable autoreconnect if we disconnect due to user will
       this.websocketClient.close();
     }
   }
@@ -302,7 +331,10 @@ class RemootioDevice extends EventEmitter {
    * }
    */
   sendFrame(frameJson: SentFrames): void {
-    if (this.websocketClient != undefined && this.websocketClient.readyState == WebSocket.OPEN) {
+    if (
+      this.websocketClient != undefined &&
+      this.websocketClient.readyState == WebSocket.OPEN
+    ) {
       this.websocketClient.send(JSON.stringify(frameJson));
       this.emit('outgoingmessage', frameJson, undefined);
     } else {
@@ -321,14 +353,17 @@ class RemootioDevice extends EventEmitter {
    * } where lastActionId must be an increment modulo 0x7FFFFFFF of the last action id (you can get this using the lastActionId property of the RemootioDevice class)
    */
   sendEncryptedFrame(unencryptedPayload: RemootioAction): void {
-    if (this.websocketClient != undefined && this.websocketClient.readyState == WebSocket.OPEN) {
+    if (
+      this.websocketClient != undefined &&
+      this.websocketClient.readyState == WebSocket.OPEN
+    ) {
       if (this.apiSessionKey != undefined) {
-        //Upon connecting, send the AUTH frame immediately to authenticate the session
+        // Upon connecting, send the AUTH frame immediately to authenticate the session
         const encryptedFrame = apicrypto.remootioApiConstructEncrypedFrame(
-          JSON.stringify(unencryptedPayload),
-          this.apiSecretKey,
-          this.apiAuthKey,
-          this.apiSessionKey
+            JSON.stringify(unencryptedPayload),
+            this.apiSecretKey,
+            this.apiAuthKey,
+            this.apiSessionKey,
         );
         this.websocketClient.send(JSON.stringify(encryptedFrame));
         this.emit('outgoingmessage', encryptedFrame, unencryptedPayload);
@@ -346,7 +381,7 @@ class RemootioDevice extends EventEmitter {
    */
   authenticate(): void {
     this.sendFrame({
-      type: 'AUTH'
+      type: 'AUTH',
     });
   }
 
@@ -355,7 +390,7 @@ class RemootioDevice extends EventEmitter {
    */
   sendHello(): void {
     this.sendFrame({
-      type: 'HELLO'
+      type: 'HELLO',
     });
   }
 
@@ -364,7 +399,7 @@ class RemootioDevice extends EventEmitter {
    */
   sendPing(): void {
     this.sendFrame({
-      type: 'PING'
+      type: 'PING',
     });
   }
 
@@ -377,8 +412,8 @@ class RemootioDevice extends EventEmitter {
       this.sendEncryptedFrame({
         action: {
           type: 'QUERY',
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -394,8 +429,8 @@ class RemootioDevice extends EventEmitter {
       this.sendEncryptedFrame({
         action: {
           type: 'TRIGGER',
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -413,8 +448,8 @@ class RemootioDevice extends EventEmitter {
       this.sendEncryptedFrame({
         action: {
           type: 'TRIGGER_SECONDARY',
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -431,8 +466,8 @@ class RemootioDevice extends EventEmitter {
       this.sendEncryptedFrame({
         action: {
           type: 'OPEN',
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -449,8 +484,8 @@ class RemootioDevice extends EventEmitter {
       this.sendEncryptedFrame({
         action: {
           type: 'CLOSE',
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -467,8 +502,8 @@ class RemootioDevice extends EventEmitter {
         action: {
           type: 'TRIGGER',
           duration: durationMins,
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -484,8 +519,8 @@ class RemootioDevice extends EventEmitter {
         action: {
           type: 'TRIGGER_SECONDARY',
           duration: durationMins,
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -502,8 +537,8 @@ class RemootioDevice extends EventEmitter {
         action: {
           type: 'OPEN',
           duration: durationMins,
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -520,8 +555,8 @@ class RemootioDevice extends EventEmitter {
         action: {
           type: 'CLOSE',
           duration: durationMins,
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
@@ -537,39 +572,45 @@ class RemootioDevice extends EventEmitter {
       this.sendEncryptedFrame({
         action: {
           type: 'RESTART',
-          id: (this.lastActionId + 1) % 0x7fffffff //set frame counter to be last frame id + 1
-        }
+          id: (this.lastActionId + 1) % 0x7fffffff, // set frame counter to be last frame id + 1
+        },
       });
     } else {
       console.warn('Unexpected error - lastActionId is undefined');
     }
   }
 
-  //Get method for the isConnected property
+  // Get method for the isConnected property
   get isConnected(): boolean {
-    if (this.websocketClient != undefined && this.websocketClient.readyState == WebSocket.OPEN) {
+    if (
+      this.websocketClient != undefined &&
+      this.websocketClient.readyState == WebSocket.OPEN
+    ) {
       return true;
     } else {
       return false;
     }
   }
 
-  //Get method for the lastActionId property
+  // Get method for the lastActionId property
   get theLastActionId(): number | undefined {
     return this.lastActionId;
   }
 
-  //Get method for the isAuthenticated property
+  // Get method for the isAuthenticated property
   get isAuthenticated(): boolean {
-    if (this.websocketClient != undefined && this.websocketClient.readyState == WebSocket.OPEN) {
+    if (
+      this.websocketClient != undefined &&
+      this.websocketClient.readyState == WebSocket.OPEN
+    ) {
       if (this.apiSessionKey != undefined) {
-        //If the session is authenticated, the apiSessionKey must be defined
+        // If the session is authenticated, the apiSessionKey must be defined
         return true;
       } else {
         return false;
       }
     } else {
-      return false; //The connection cannot be authenticated if it's not even established
+      return false; // The connection cannot be authenticated if it's not even established
     }
   }
 }
