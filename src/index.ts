@@ -267,7 +267,7 @@ class RemootioDevice extends EventEmitter {
                   this.lastActionId = decryptedPayload.response.id; // We update the lastActionId
                 }
               } else {
-                console.warn('Unexpected error - lastActionId is undefined');
+                console.warn('onMessage - Unexpected error - lastActionId is undefined');
               }
 
               // if it's the response to our QUERY action sent during the authentication flow the 'authenticated' event should be emitted
@@ -416,7 +416,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('sendQuery - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -433,7 +433,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('sendTrigger - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -452,7 +452,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('sendTriggerSecondary - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -470,7 +470,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('sendOpen - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -488,7 +488,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('sendClose - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -506,7 +506,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('holdTriggerOutputActive - Unexpected error - lastActionId is undefined');
     }
   }
   /**
@@ -523,7 +523,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('holdTriggerSecondaryOutputActive - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -541,7 +541,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('holdOpenOutputActive - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -559,7 +559,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('holdCloseOutputActive - Unexpected error - lastActionId is undefined');
     }
   }
 
@@ -576,7 +576,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('Unexpected error - lastActionId is undefined');
+      console.warn('sendRestart - Unexpected error - lastActionId is undefined');
     }
   }
 

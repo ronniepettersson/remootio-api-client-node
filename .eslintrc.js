@@ -4,9 +4,9 @@ module.exports = {
     'commonjs': true,
     'es2020': true,
   },
-  'extends': [
-    'google',
-  ],
+  //'extends': [
+  //  'eslint:recommended',
+  //],
   'parser': '@typescript-eslint/parser',
   'parserOptions': {
     'ecmaVersion': 'latest',
