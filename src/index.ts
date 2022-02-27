@@ -90,6 +90,7 @@ interface RemootioDeviceEvents {
   authenticated: () => void;
   disconnect: () => void;
   error: (errorMessage: string) => void;
+  debug: (debugMessage: string) => void;
   outgoingmessage: (
     frame?: SentFrames,
     unencryptedPayload?: SentEcryptedFrameContent
@@ -142,13 +143,13 @@ class RemootioDevice extends EventEmitter {
     // Input check
     let hexstringRe = /[0-9A-Fa-f]{64}/g;
     if (!hexstringRe.test(ApiSecretKey)) {
-      console.error(
+      this.emit('error',
           'ApiSecretKey must be a hexstring representing a 256bit long byteArray',
       );
     }
     hexstringRe = /[0-9A-Fa-f]{64}/g;
     if (!hexstringRe.test(ApiAuthKey)) {
-      console.error(
+      this.emit('error',
           'ApiAuthKey must be a hexstring representing a 256bit long byteArray',
       );
     }
@@ -267,7 +268,7 @@ class RemootioDevice extends EventEmitter {
                   this.lastActionId = decryptedPayload.response.id; // We update the lastActionId
                 }
               } else {
-                console.warn('onMessage - Unexpected error - lastActionId is undefined');
+                this.emit('debug','onMessage: lastActionId is undefined');
               }
 
               // if it's the response to our QUERY action sent during the authentication flow the 'authenticated' event should be emitted
@@ -307,8 +308,9 @@ class RemootioDevice extends EventEmitter {
       this.emit('disconnect');
     });
 
-    this.websocketClient.on('error', () => {
+    this.websocketClient.on('error', (err) => {
       // Connection error
+      this.emit('debug', err.message);
     });
   }
 
@@ -338,7 +340,7 @@ class RemootioDevice extends EventEmitter {
       this.websocketClient.send(JSON.stringify(frameJson));
       this.emit('outgoingmessage', frameJson, undefined);
     } else {
-      console.warn('The websocket client is not connected');
+      this.emit('debug','The websocket client is not connected');
     }
   }
 
@@ -368,10 +370,10 @@ class RemootioDevice extends EventEmitter {
         this.websocketClient.send(JSON.stringify(encryptedFrame));
         this.emit('outgoingmessage', encryptedFrame, unencryptedPayload);
       } else {
-        console.warn('Authenticate session first to send this message');
+        this.emit('debug','sendEncryptedFrame: Authenticate session first to send this message');
       }
     } else {
-      console.warn('The websocket client is not connected');
+      this.emit('debug','The websocket client is not connected');
     }
   }
 
@@ -416,7 +418,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('sendQuery - Unexpected error - lastActionId is undefined');
+      this.emit('debug','sendQuery: lastActionId is undefined');
     }
   }
 
@@ -433,7 +435,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('sendTrigger - Unexpected error - lastActionId is undefined');
+      this.emit('debug','sendTrigger: lastActionId is undefined');
     }
   }
 
@@ -452,7 +454,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('sendTriggerSecondary - Unexpected error - lastActionId is undefined');
+      this.emit('debug','sendTriggerSecondary: lastActionId is undefined');
     }
   }
 
@@ -470,7 +472,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('sendOpen - Unexpected error - lastActionId is undefined');
+      this.emit('debug','sendOpen: lastActionId is undefined');
     }
   }
 
@@ -488,7 +490,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('sendClose - Unexpected error - lastActionId is undefined');
+      this.emit('debug','sendClose: lastActionId is undefined');
     }
   }
 
@@ -506,7 +508,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('holdTriggerOutputActive - Unexpected error - lastActionId is undefined');
+      this.emit('debug','holdTriggerOutputActive: lastActionId is undefined');
     }
   }
   /**
@@ -523,7 +525,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('holdTriggerSecondaryOutputActive - Unexpected error - lastActionId is undefined');
+      this.emit('debug','holdTriggerSecondaryOutputActive: lastActionId is undefined');
     }
   }
 
@@ -541,7 +543,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('holdOpenOutputActive - Unexpected error - lastActionId is undefined');
+      this.emit('debug','holdOpenOutputActive: lastActionId is undefined');
     }
   }
 
@@ -559,7 +561,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('holdCloseOutputActive - Unexpected error - lastActionId is undefined');
+      this.emit('debug','holdCloseOutputActive: lastActionId is undefined');
     }
   }
 
@@ -576,7 +578,7 @@ class RemootioDevice extends EventEmitter {
         },
       });
     } else {
-      console.warn('sendRestart - Unexpected error - lastActionId is undefined');
+      this.emit('debug','sendRestart: lastActionId is undefined');
     }
   }
 
