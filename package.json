@@ -1,6 +1,6 @@
 {
   "name": "@ronniepettersson/remootio-api-client",
-  "version": "2.0.10",
+  "version": "2.0.11",
   "description": "Client for the Remootio Websocket API",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
