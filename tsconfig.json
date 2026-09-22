@@ -3,7 +3,9 @@
       "target": "es2020",
       "module": "commonjs",
       "declaration": true,
+      "rootDir": "./src",
       "outDir": "./lib",
+      "types": ["jest"],
       "strict": true
     },
     "include": ["src"],

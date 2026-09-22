@@ -1,7 +1,37 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+jest.mock('ws', () => {
+  const MockWebSocket: jest.Mock & {
+    CONNECTING: number;
+    OPEN: number;
+    CLOSING: number;
+    CLOSED: number;
+  } = Object.assign(
+    jest.fn().mockImplementation(() => {
+      const closeListeners: Array<() => void> = [];
+
+      return {
+        on: jest.fn((event: string, listener: () => void) => {
+          if (event === 'close') {
+            closeListeners.push(listener);
+          }
+        }),
+        close: jest.fn(() => {
+          closeListeners.forEach((listener) => listener());
+        }),
+        terminate: jest.fn(),
+        send: jest.fn(),
+        readyState: 0
+      };
+    }),
+    { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 }
+  );
+
+  return MockWebSocket;
+});
+
 import RemootioDevice = require('../index');
 
-const testIp = '192.168.0.15';
+const testIp = '192.168.1.15';
 const testApiSecretKey =
   'C85B1CF44398C3BA36B35D63CD779C0A265F9592FF9C5D85EFA16E3C4121B4F6';
 const testApiAuthKey =
